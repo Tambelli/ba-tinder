@@ -10,14 +10,16 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 class SecurityConfig {
-    @Bean UserDetailsService users(Environment env) {
+    @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+
+    @Bean UserDetailsService users(Environment env, PasswordEncoder encoder) {
         boolean demo = env.getProperty("app.demo", Boolean.class, false);
-        var encoder = new BCryptPasswordEncoder();
         var users = new InMemoryUserDetailsManager();
         String[][] accounts = {{"marca", "BRAND", "brand"}, {"operacao", "OPS", "ops"}, {"creator", "CREATOR", "creator"}};
         for (var account : accounts) {
