@@ -10,7 +10,7 @@ final class Models {
                       @NotBlank @Size(max=1500) String brief) {}
     record UpdateDeal(@NotBlank String status, @NotBlank @Size(max=100) String owner,
                       @NotBlank @Size(max=1000) String note) {}
-    record Decision(boolean accepted, @NotBlank @Size(max=1000) String note) {}
+    record Decision(@NotNull Boolean accepted, @NotBlank @Size(max=1000) String note) {}
     record Quote(long budgetCents, long commissionCents, long executionCents, long totalCents, String commissionMode) {}
     record Deal(String id, String brandId, Creator creator, long budgetCents, long commissionCents,
                 long executionCents, long totalCents, String commissionMode, String matchMode,

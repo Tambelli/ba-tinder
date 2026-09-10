@@ -24,6 +24,11 @@ class MatchIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired MatchService service;
     @Autowired JdbcTemplate db;
+    @Test void publicSessionExposesCsrfAndConfiguredPolicies() throws Exception {
+        mvc.perform(get("/api/session")).andExpect(status().isOk()).andExpect(jsonPath("$.authenticated").value(false))
+            .andExpect(jsonPath("$.csrfToken").isNotEmpty()).andExpect(jsonPath("$.matchMode").value("MEDIATED"))
+            .andExpect(jsonPath("$.commissionMode").value("INCLUDED"));
+    }
     @Test void anonymousCannotReadAndMutationsRequireCsrf() throws Exception {
         mvc.perform(get("/api/deals")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/deals").with(user("marca").roles("BRAND")).contentType(MediaType.APPLICATION_JSON)
@@ -67,6 +72,8 @@ class MatchIntegrationTest {
             .andExpect(status().isForbidden());
     }
     @Test void validatesBudgetBriefAndCreator() throws Exception {
+        mvc.perform(post("/api/deals").with(user("marca").roles("BRAND")).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"creatorId\":1,\"budgetCents\":100.5,\"brief\":\"Teste\"}")).andExpect(status().isBadRequest());
         for(String body:new String[]{"{\"creatorId\":1,\"budgetCents\":0,\"brief\":\"Teste\"}","{\"creatorId\":1,\"budgetCents\":100,\"brief\":\"   \"}"})
             mvc.perform(post("/api/deals").with(user("marca").roles("BRAND")).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest());

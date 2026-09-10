@@ -16,7 +16,7 @@ class ApiController {
     ApiController(MatchService service,Environment env) {this.service=service;demo=env.getProperty("app.demo",Boolean.class,false);}
     @GetMapping("/session") Map<String,Object> session(Authentication auth,CsrfToken csrf) {
         return Map.of("authenticated",auth!=null,"username",auth==null?"":auth.getName(),"role",auth==null?"":role(auth),
-            "csrfToken",csrf.getToken(),"demo",demo,"matchMode",service.matchMode,"commissionMode",service.commissionMode);
+            "csrfToken",csrf.getToken(),"demo",demo,"matchMode",service.matchMode(),"commissionMode",service.commissionMode());
     }
     @GetMapping("/creators") List<Creator> creators(@RequestParam(required=false) String productNiche,@RequestParam(required=false) String creatorNiche,
         @RequestParam(required=false) String state,@RequestParam(defaultValue="0") long minFollowers,@RequestParam(defaultValue="1000000000") long maxFollowers,

@@ -17,8 +17,8 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 class MatchService {
     private final JdbcTemplate db;
-    final String matchMode;
-    final String commissionMode;
+    private final String matchMode;
+    private final String commissionMode;
     static final RowMapper<Creator> CREATOR = (r,n) -> new Creator(r.getLong("id"),r.getString("name"),r.getString("handle"),
         r.getString("creator_niche"),r.getString("product_niche"),r.getString("state"),r.getString("city"),
         r.getLong("followers"),r.getDouble("engagement"),r.getString("bio"),r.getString("color"));
@@ -29,6 +29,8 @@ class MatchService {
         if (!Set.of("MEDIATED","DOUBLE_OPT_IN").contains(matchMode) || !Set.of("INCLUDED","ADDED").contains(commissionMode))
             throw new IllegalStateException("MATCH_MODE ou COMMISSION_MODE inválido");
     }
+    String matchMode() { return matchMode; }
+    String commissionMode() { return commissionMode; }
     List<Creator> creators(String productNiche, String creatorNiche, String state, long minFollowers, long maxFollowers, double minEngagement, double maxEngagement) {
         if(minFollowers < 0 || maxFollowers < minFollowers || minEngagement < 0 || maxEngagement > 100 || maxEngagement < minEngagement
             || !Double.isFinite(minEngagement) || !Double.isFinite(maxEngagement)) throw bad("Faixas de filtro inválidas.");
