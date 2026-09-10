@@ -22,6 +22,6 @@ class DemoData implements CommandLineRunner {
             {8L,"André Santos","@andre.exemplo","Gastronomia","Alimentos","BA","Salvador",178000L,5.6,"Sabores da Bahia e encontros pela cozinha. Conteúdo que valoriza ingredientes e pessoas.","orange"}
         };
         for(var c:creators) if(db.queryForObject("SELECT COUNT(*) FROM creators WHERE id=?",Integer.class,c[0])==0)
-            db.update("INSERT INTO creators(id,name,handle,creator_niche,product_niche,state,city,followers,engagement,bio,color) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",c);
+            db.update("INSERT INTO creators(id,name,handle,creator_niche,product_niche,state,city,followers,engagement,bio,color) VALUES(?,?,?,?,?,?,?,?,?,?,?)",c);
     }
 }
