@@ -1,5 +1,8 @@
-import { cp, mkdir } from "node:fs/promises";
-const root = new URL("../", import.meta.url);
-await mkdir(new URL("dist/", root), { recursive: true });
-await cp(new URL("src/", root), new URL("dist/", root), { recursive: true });
-console.log("Frontend JavaScript gerado em frontend/dist.");
+// Compatibility entry point for older local build instructions.
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+const root = fileURLToPath(new URL('../', import.meta.url));
+for (const [script, args] of [['typescript/bin/tsc', ['--noEmit']], ['vite/bin/vite.js', ['build']]]) {
+  const result = spawnSync(process.execPath, [`${root}/node_modules/${script}`, ...args], { cwd: root, stdio: 'inherit' });
+  if (result.status !== 0) process.exit(result.status ?? 1);
+}

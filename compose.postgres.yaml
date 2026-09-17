@@ -1,0 +1,25 @@
+# Local PostgreSQL variant: docker compose -f compose.yaml -f compose.postgres.yaml up --build
+services:
+  app:
+    environment:
+      DATABASE_URL: jdbc:postgresql://database:5432/match
+      DATABASE_USER: match
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
+    depends_on:
+      database:
+        condition: service_healthy
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: match
+      POSTGRES_USER: match
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
+    volumes:
+      - match-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U match -d match"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+volumes:
+  match-postgres:

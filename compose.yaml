@@ -10,6 +10,7 @@ services:
       BRAND_PASSWORD: ${BRAND_PASSWORD:-}
       OPS_PASSWORD: ${OPS_PASSWORD:-}
       CREATOR_PASSWORD: ${CREATOR_PASSWORD:-}
+      DATABASE_BASELINE: ${DATABASE_BASELINE:-false}
     volumes:
       - match-data:/app/data
 volumes:

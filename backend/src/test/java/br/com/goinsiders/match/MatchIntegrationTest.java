@@ -17,7 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-@SpringBootTest(properties={"app.demo=true","spring.datasource.url=jdbc:h2:mem:matchtest;MODE=PostgreSQL;DB_CLOSE_DELAY=-1"})
+@SpringBootTest(properties={"app.demo=true","spring.datasource.url=${TEST_DATABASE_URL:jdbc:h2:mem:matchtest;MODE=PostgreSQL;DB_CLOSE_DELAY=-1}"})
 @AutoConfigureMockMvc
 @Transactional
 class MatchIntegrationTest {
@@ -62,14 +62,16 @@ class MatchIntegrationTest {
         String body="{\"creatorId\":1,\"budgetCents\":1000000,\"brief\":\"Lançamento da linha de beleza\"}";
         mvc.perform(post("/api/deals").with(user("marca").roles("BRAND")).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
             .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("REQUESTED")).andExpect(jsonPath("$.commissionCents").value(300000));
-        mvc.perform(post("/api/deals").with(user("marca").roles("BRAND")).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
-            .andExpect(status().isConflict());
         mvc.perform(get("/api/deals").with(user("outra-marca").roles("BRAND"))).andExpect(jsonPath("$.length()").value(0));
         String id=service.deals("marca","BRAND").getFirst().id();
         mvc.perform(patch("/api/ops/deals/"+id).with(user("marca").roles("BRAND")).with(csrf()).contentType(MediaType.APPLICATION_JSON)
             .content("{\"status\":\"CLOSED\",\"owner\":\"Ana\",\"note\":\"Fechado\"}")).andExpect(status().isForbidden());
         mvc.perform(post("/api/deals").with(user("operacao").roles("OPS")).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
             .andExpect(status().isForbidden());
+        // A constraint violation aborts a PostgreSQL transaction. Keep this final
+        // in the outer test transaction; real HTTP requests each get their own.
+        mvc.perform(post("/api/deals").with(user("marca").roles("BRAND")).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isConflict());
     }
     @Test void validatesBudgetBriefAndCreator() throws Exception {
         mvc.perform(post("/api/deals").with(user("marca").roles("BRAND")).with(csrf()).contentType(MediaType.APPLICATION_JSON)

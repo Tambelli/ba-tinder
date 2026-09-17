@@ -1,3 +1,4 @@
+-- Initial schema. Existing MVP databases can explicitly baseline at version 1.
 CREATE TABLE IF NOT EXISTS creators (
  id BIGINT PRIMARY KEY, name VARCHAR(100) NOT NULL, handle VARCHAR(80) NOT NULL,
  creator_niche VARCHAR(60) NOT NULL, product_niche VARCHAR(60) NOT NULL,

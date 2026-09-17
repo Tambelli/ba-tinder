@@ -1,6 +1,8 @@
 # GoInsiders Match · ba-tinder
 
-MVP de matchmaking entre marcas e creators, com intermediação comercial da GoInsiders e comissão de 30%. Backend em **Java 21 / Spring Boot 3.5.16**, frontend em **JavaScript nativo**, HTML e CSS responsivo.
+Aplicativo de descoberta e negociação entre marcas e creators, com intermediação comercial da GoInsiders e comissão de 30%. Interface reformulada em **React + TypeScript + Vite**, backend em **Java 21 / Spring Boot 3.5.16**, migrações **Flyway** e opção de **PostgreSQL**. A experiência se inspira na descoberta por cards do Tinder, com finalidade exclusivamente profissional.
+
+A escolha das tecnologias, alternativas avaliadas, requisitos e evolução estão em [docs/ARQUITETURA.md](docs/ARQUITETURA.md). Java foi mantido pela adequação às regras já testadas; a interface foi reconstruída em componentes tipados, com navegação móvel, gestos, desfazer, filtros e estados de erro.
 
 O projeto implementa a descoberta e o acompanhamento de negociações diretas. Os perfis de demonstração são fictícios; o sistema não envia mensagens, cobra pagamentos ou consulta redes sociais.
 
@@ -16,17 +18,20 @@ Acesse [http://localhost:8080](http://localhost:8080). O Compose expõe o app so
 
 ## Executar sem Docker
 
-Requisitos: JDK 21, Maven 3.9+ e Node.js 22+. O frontend não tem dependências npm.
+Requisitos: JDK 21, Maven 3.9+ e Node.js 22.18+ (recomendado: Node 24).
 
 Na raiz do repositório:
 
 ```sh
-node frontend/scripts/build.mjs
+npm ci --prefix frontend
+npm run build --prefix frontend
 mvn -f backend/pom.xml verify
 java -jar backend/target/ba-tinder-0.1.0.jar --app.demo=true
 ```
 
-Abra [http://localhost:8080](http://localhost:8080). O backend entrega o frontend e a API na mesma origem. O banco persiste no diretório `data/` do diretório de execução. Para desenvolvimento, depois de gerar o frontend, também é possível usar `mvn -f backend/pom.xml spring-boot:run -Dspring-boot.run.arguments=--app.demo=true`. Alterações no frontend requerem nova geração e reinício/reempacotamento.
+Abra [http://localhost:8080](http://localhost:8080). O backend entrega o frontend e a API na mesma origem. O banco persiste no diretório `data/` do diretório de execução.
+
+Para desenvolvimento, inicie o backend com `mvn -f backend/pom.xml spring-boot:run -Dspring-boot.run.arguments=--app.demo=true`. Em outro terminal, rode `npm run dev --prefix frontend` e abra [http://localhost:5173](http://localhost:5173). O Vite encaminha `/api` para a porta 8080 e atualiza a interface durante a edição. O pacote final continua sendo servido pelo Spring, sem servidor Node em produção.
 
 ## Acessos de demonstração
 
@@ -43,7 +48,7 @@ Há botões de acesso na tela de login quando a demonstração está habilitada.
 ## Fluxo implementado
 
 1. A marca combina nicho do produto, nicho do creator, UF, faixa de seguidores e faixa de engajamento. Os filtros são cumulativos; o catálogo é ordenado por engajamento e seguidores, sem pontuação de afinidade inventada.
-2. A marca pula um perfil ou arrasta para a direita/clica em **Tenho interesse**. Antes do envio, informa o investimento e um briefing. Perfis pulados são temporários, apenas na sessão da tela.
+2. A marca pula um perfil ou arrasta para a direita/clica em **Tenho interesse**. Antes do envio, informa o investimento e um briefing. **Voltar** desfaz o último perfil pulado. Perfis pulados são temporários, apenas na sessão da tela de descoberta.
 3. A solicitação entra na fila da GoInsiders com status **Interesse enviado**. O mesmo par marca/creator não pode gerar solicitações duplicadas neste MVP.
 4. A operação atribui um responsável e registra contato, aceite, negociação e fechamento, mantendo histórico de cada etapa.
 5. A marca acompanha seus interesses. No modo de dupla aprovação, o creator recebe o convite no app após a operação prepará-lo.
@@ -71,19 +76,33 @@ java -jar backend/target/ba-tinder-0.1.0.jar --app.demo=true --app.match-mode=DO
 
 Também são aceitas as variáveis `APP_DEMO`, `MATCH_MODE`, `COMMISSION_MODE`, `BRAND_PASSWORD`, `OPS_PASSWORD`, `CREATOR_PASSWORD`, `PORT` e `SERVER_ADDRESS`. O arquivo `.env` é lido pelo **Docker Compose**; a execução direta Java requer variáveis exportadas ou argumentos. Use `.env.example` como referência.
 
-Para PostgreSQL, configure `DATABASE_URL=jdbc:postgresql://host:5432/database`, `DATABASE_USER` e `DATABASE_PASSWORD`. O driver e o schema inicial estão incluídos; **a validação automatizada usa H2**, não PostgreSQL. Antes de produção, valide contra o PostgreSQL escolhido e adote migrações versionadas. O H2 local é suficiente para experimentar este MVP.
+Para PostgreSQL, configure `DATABASE_URL=jdbc:postgresql://host:5432/database`, `DATABASE_USER` e `DATABASE_PASSWORD`. Driver e migrações estão incluídos. Há um job CI específico para PostgreSQL 17; o teste local padrão usa H2.
+
+Para experimentar PostgreSQL via Docker, defina `POSTGRES_PASSWORD` no `.env` e rode:
+
+```sh
+docker compose -f compose.yaml -f compose.postgres.yaml up --build
+```
+
+O banco fica em volume próprio e não expõe porta ao host. Essa configuração cria uma base independente; não importa automaticamente os dados H2.
+
+### Atualização de uma instalação anterior
+
+Bancos novos recebem V1 e V2 automaticamente pelo Flyway. Para um banco do MVP anterior que já contém as três tabelas, faça backup e confirme que o schema corresponde à V1. Só nessa primeira atualização configure `DATABASE_BASELINE=true` (ou `--spring.flyway.baseline-on-migrate=true`). O Flyway registra a versão inicial e aplica V2 sem recriar as tabelas. Depois remova a variável. O baseline é desabilitado por padrão para não aceitar silenciosamente um schema desconhecido. Nunca altere migrações já aplicadas; crie uma nova versão.
 
 ## Estrutura
 
 ```text
 backend/
   src/main/java/br/com/goinsiders/match/  API, segurança, regras e dados demo
-  src/main/resources/                  Configuração e schema SQL
+  src/main/resources/db/migration/     Migrações versionadas do banco
   src/test/                            Testes de integração
 frontend/
-  src/                                 HTML, JavaScript e CSS
-  scripts/build.mjs                    Cópia dos assets para dist
-  test/                                Testes do domínio de frontend
+  src/components/                      Descoberta, proposta, negociação e login
+  src/types.ts, api.ts, domain.ts        Contratos, transporte e regras da interface
+  src/styles.css                       Design responsivo e estados de interação
+  test/                                Testes do domínio TypeScript
+  e2e/                                 Fluxos em navegador desktop e móvel
 docs/                                  Regras e contrato da API
 .github/workflows/ci.yml                Build e testes a cada push/PR
 ```
@@ -91,12 +110,25 @@ docs/                                  Regras e contrato da API
 ## Verificação
 
 ```sh
-node --test frontend/test/domain.test.js
-node frontend/scripts/build.mjs
+npm ci --prefix frontend
+npm test --prefix frontend
+npm run build --prefix frontend
+cd frontend
+npx playwright install chromium
+npm run test:e2e
+cd ..
 mvn -f backend/pom.xml verify
 ```
 
-Os testes cobrem filtros combinados, validação de valores e briefing, comissão incluída/adicionada e arredondamento, políticas preservadas na negociação, login, CSRF, permissões, isolamento entre marcas, duplicidade, transições, histórico e dupla concordância. O GitHub Actions executa essas mesmas verificações.
+Os testes Java cobrem filtros combinados, valores, comissão, arredondamento, políticas preservadas, login, CSRF, permissões, isolamento entre marcas, duplicidade, transições, histórico, dupla concordância e migração do banco anterior. Os testes de navegador usam respostas de API controladas para exercitar os componentes em desktop e celular; não substituem a integração com o backend. O GitHub Actions executa build, tipos, testes de domínio e navegador, além do backend em H2 e PostgreSQL.
+
+Para validar também o navegador com a API real, inicie uma instância demo isolada (não use dados de trabalho):
+
+```sh
+java -jar backend/target/ba-tinder-0.1.0.jar --app.demo=true "--spring.datasource.url=jdbc:h2:mem:smoke;MODE=PostgreSQL;DB_CLOSE_DELAY=-1"
+```
+
+Em outro terminal execute `node frontend/scripts/smoke.mjs`. O teste cria uma negociação fictícia e percorre contato, aceite, negociação e fechamento. Gera capturas em `frontend/test-results/`. A base em memória desaparece ao encerrar o servidor. `SMOKE_URL` permite escolher outra porta local.
 
 ## Limites do MVP e próximos incrementos
 
@@ -104,6 +136,6 @@ Os testes cobrem filtros combinados, validação de valores e briefing, comissã
 - Catálogo sem CRUD ou importação. Definir curadoria, consentimento e fonte verificável de seguidores/engajamento; adicionar atualização e data de coleta.
 - Uma negociação por marca/creator, sem reabertura nem alteração do orçamento. Evoluir para propostas versionadas e novas rodadas com prevenção de duplicação por requisição.
 - Sem chat, notificações, contratos, uploads de evidências, pagamentos, cobrança ou repasses. Observações em texto são compartilhadas no histórico; não são um canal para notas internas confidenciais.
-- Preparar operação pública: domínio e TLS, limitação de tentativas de login, identidade persistida, paginação, backups, observabilidade, migrações e processo de privacidade/retenção. A configuração local não representa uma implantação pronta para produção.
+- Preparar operação pública: domínio e TLS, limitação de tentativas de login, identidade persistida, paginação, backups, observabilidade e processo de privacidade/retenção. Migrações versionadas já estão implementadas. A configuração local não representa uma implantação pronta para produção.
 
 Detalhes em [docs/API.md](docs/API.md) e [docs/PRODUTO.md](docs/PRODUTO.md).
